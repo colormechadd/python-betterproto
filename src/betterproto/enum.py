@@ -33,7 +33,7 @@ def _is_descriptor(obj: object) -> bool:
     )
 
 
-class EnumType(EnumMeta if TYPE_CHECKING else type):
+class EnumType(EnumMeta):
     _value_map_: Mapping[int, Enum]
     _member_map_: Mapping[str, Enum]
 
@@ -79,33 +79,6 @@ class EnumType(EnumMeta if TYPE_CHECKING else type):
 
         return cls
 
-    if not TYPE_CHECKING:
-
-        def __call__(cls, value: int) -> Enum:
-            try:
-                return cls._value_map_[value]
-            except (KeyError, TypeError):
-                raise ValueError(f"{value!r} is not a valid {cls.__name__}") from None
-
-        def __iter__(cls) -> Generator[Enum, None, None]:
-            yield from cls._member_map_.values()
-
-        if sys.version_info >= (3, 8):  # 3.8 added __reversed__ to dict_values
-
-            def __reversed__(cls) -> Generator[Enum, None, None]:
-                yield from reversed(cls._member_map_.values())
-
-        else:
-
-            def __reversed__(cls) -> Generator[Enum, None, None]:
-                yield from reversed(tuple(cls._member_map_.values()))
-
-        def __getitem__(cls, key: str) -> Enum:
-            return cls._member_map_[key]
-
-        @property
-        def __members__(cls) -> MappingProxyType[str, Enum]:
-            return MappingProxyType(cls._member_map_)
 
     def __repr__(cls) -> str:
         return f"<enum {cls.__name__!r}>"
@@ -123,38 +96,11 @@ class EnumType(EnumMeta if TYPE_CHECKING else type):
         return isinstance(member, cls) and member.name in cls._member_map_
 
 
-class Enum(IntEnum if TYPE_CHECKING else int, metaclass=EnumType):
+class Enum(IntEnum):
     """
     The base class for protobuf enumerations, all generated enumerations will
     inherit from this. Emulates `enum.IntEnum`.
     """
-
-    name: Optional[str]
-    value: int
-
-    if not TYPE_CHECKING:
-
-        def __new__(cls, *, name: Optional[str], value: int) -> Self:
-            self = super().__new__(cls, value)
-            super().__setattr__(self, "name", name)
-            super().__setattr__(self, "value", value)
-            return self
-
-    def __str__(self) -> str:
-        return self.name or "None"
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}.{self.name}"
-
-    def __setattr__(self, key: str, value: Any) -> Never:
-        raise AttributeError(
-            f"{self.__class__.__name__} Cannot reassign a member's attributes."
-        )
-
-    def __delattr__(self, item: Any) -> Never:
-        raise AttributeError(
-            f"{self.__class__.__name__} Cannot delete a member's attributes."
-        )
 
     @classmethod
     def try_value(cls, value: int = 0) -> Self:
@@ -172,7 +118,7 @@ class Enum(IntEnum if TYPE_CHECKING else int, metaclass=EnumType):
             ``value`` isn't actually a member.
         """
         try:
-            return cls._value_map_[value]
+            return cls(value)
         except (KeyError, TypeError):
             return cls.__new__(cls, name=None, value=value)
 
