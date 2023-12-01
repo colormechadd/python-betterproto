@@ -209,6 +209,8 @@ class {{ service.py_name }}Base(ServiceBase):
     async def __rpc_{{ method.py_name }}(self, stream: "grpclib.server.Stream[{{ method.py_input_message_type }}, {{ method.py_output_message_type }}]") -> None:
         {% if not method.client_streaming %}
         request = await stream.recv_message()
+        if request is None:
+            raise RuntimeError("Failed to receive message")
         {% else %}
         request = stream.__aiter__()
         {% endif %}
